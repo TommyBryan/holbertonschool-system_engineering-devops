@@ -1,0 +1,75 @@
+# Simple Web Stack Documentation
+
+The user opens a browser and types `www.foobar.com`. The browser first checks DNS to find the IP address of the server. The browser then sends a request to that server. On the server, a **LAMP-like stack** runs Linux as the OS, **Nginx** as the web server, an application server (e.g., PHP-FPM or Node.js) to run the website code, and **MySQL** as the database.
+
+Nginx handles the request and either serves static files or passes dynamic requests to the application server. The application server may query MySQL to retrieve or update data and then builds a web page. That page is sent back to the user’s browser to display the site. It all happens on **one server**, which makes it simple but not very scalable.
+
+---
+# Design Infrastructure
+
+```mermaid
+%%{init:{"flowchart":{"htmlLabels":false}}}%%
+flowchart LR
+    subgraph Internet
+      A[User Browser]
+    end
+
+    subgraph DNS
+      B[www.foobar.com<br>A record → 8.8.8.8]
+    end
+
+    subgraph Server["Single Server (Linux, IP 8.8.8.8)"]
+      C["Nginx Web Server<br>Ports 80/443"]
+      D["Application Server<br>(e.g. PHP, Node.js)"]
+      F["Application Files<br>(Codebase)"]
+      E["MySQL Database"]
+    end
+
+    A -- "1. DNS Lookup" --> B
+    B -- "2. Resolved to 8.8.8.8" --> A
+    A -- "3. HTTP Request" --> C
+    C -- "4. Serves Static Assets" --> A
+    C -- "5. Proxies to App Server" --> D
+    D -- "6. Loads App Code" --> F
+    D -- "7. SQL Queries" --> E
+    E -- "8. Results" --> D
+    D -- "9. Rendered HTML" --> C
+    C -- "10. HTTP Response" --> A
+```
+---
+
+# Infrastructure Specifics
+
+### What is a server?
+A server is a computer that provides services or resources to other computers (clients). In web infrastructure, servers store web pages, run applications, handle requests, and manage data.
+
+### Role of the domain name
+A domain name is a human-readable address used to access websites. It is easier to remember than a raw IP address. When a user types it into a browser, DNS resolves it to the server IP, telling the browser where to send the request.
+
+### Type of DNS record for “www”
+An **A record** maps the hostname `www.foobar.com` directly to its IPv4 address (`8.8.8.8`).
+
+### Role of the web server
+The web server (Nginx) handles HTTP/HTTPS requests from users, serves static content, and forwards dynamic requests to the application server.
+
+### Role of the application server
+The application server executes business logic and generates dynamic content. The web server forwards appropriate requests to it for processing and response.
+
+### Role of the database
+The database (MySQL) stores and organizes persistent data. The application server queries the database to retrieve or update data based on user actions.
+
+### Communication with the user’s computer
+The server communicates using **HTTP/HTTPS**, which runs over **TCP/IP**, ensuring reliable, ordered delivery of requests and responses.
+
+---
+
+# Infrastructure Issues
+
+### Single Point of Failure (SPOF)
+If there is only **one server** handling all services and it fails, the entire website becomes unavailable.
+
+### Downtime During Maintenance
+Restarting the web server or application server for code updates or configuration changes causes temporary downtime.
+
+### Scalability
+A single server has limited CPU, memory, and bandwidth. If too many users visit simultaneously, performance degrades, and it cannot scale to handle the load.

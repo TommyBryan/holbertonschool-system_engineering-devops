@@ -1,0 +1,102 @@
+# Scaled-Up Web Infrastructure
+
+This infrastructure is designed to handle more traffic, improve reliability, and separate concerns.  
+
+The user opens a browser and types `www.foobar.com`. The browser first checks DNS to find the **load balancer cluster IP**. The load balancer distributes the request to **web servers**. Web servers handle static content and forward dynamic requests to **application servers**, which execute the business logic. Application servers query **databases** to retrieve or store persistent data. Responses travel back through the load balancer to the user.  
+
+Separating components onto dedicated servers improves **performance, scalability, and maintainability**. Clustering the load balancer removes a single point of failure at the entry point.
+
+---
+
+# Design Infrastructure
+
+```mermaid
+%%{init:{"flowchart":{"htmlLabels":false}}}%%
+flowchart LR
+    subgraph Internet
+      A[User Browser]
+    end
+
+    subgraph DNS
+      B[www.foobar.com<br>A record → LB Cluster IP]
+    end
+
+    subgraph LB["HAProxy Cluster"]
+      LB1["Load Balancer 1"]
+      LB2["Load Balancer 2"]
+    end
+
+    subgraph WebServer["Web Server Cluster"]
+      W1["Web Server 1 (Nginx)"]
+      W2["Web Server 2 (Nginx)"]
+    end
+
+    subgraph AppServer["Application Server Cluster"]
+      App1["Application Server 1"]
+      App2["Application Server 2"]
+    end
+
+    subgraph Database["Database Server Cluster"]
+      DB1["Primary MySQL"]
+      DB2["Replica MySQL"]
+    end
+
+    A -- "1. DNS Lookup" --> B
+    B -- "2. Resolved to LB Cluster" --> A
+    A -- "3. HTTP Request" --> LB1
+    A -- "3. HTTP Request" --> LB2
+
+    LB1 -- "4. Forward to Web Server" --> W1
+    LB1 -- "4. Forward to Web Server" --> W2
+    LB2 -- "4. Forward to Web Server" --> W1
+    LB2 -- "4. Forward to Web Server" --> W2
+
+    W1 -- "5. Proxy Dynamic Requests" --> App1
+    W2 -- "5. Proxy Dynamic Requests" --> App2
+
+    App1 -- "6. Read/Write Queries" --> DB1
+    App2 -- "6. Read Queries" --> DB2
+    DB1 -- "7. Replication" --> DB2
+
+    App1 -- "8. Response" --> W1
+    App2 -- "8. Response" --> W2
+    W1 -- "9. HTTP Response" --> LB1
+    W2 -- "9. HTTP Response" --> LB2
+    LB1 -- "10. Response to User" --> A
+    LB2 -- "10. Response to User" --> A
+```
+---
+
+# Infrastructure Specifics
+
+### Load Balancer Cluster
+Two HAProxy instances act as a cluster for **high availability**. If one fails, the other continues to distribute traffic. This prevents a single point of failure at the front of the infrastructure.
+
+### Web Servers
+- Serve static content and handle client connections.  
+- Multiple web servers allow **horizontal scaling** and reduce the risk of downtime if one server fails.  
+
+### Application Servers
+- Dedicated servers for dynamic content and business logic.  
+- Scaling application servers independently allows more requests to be handled without overloading web servers.  
+
+### Database Servers
+- **Primary-Replica setup**: Primary handles write operations, Replica handles read-only queries.  
+- Replication ensures data consistency and improves read performance.
+
+### Benefits of Separation
+- **Performance:** Dedicated servers reduce resource contention.  
+- **Scalability:** Each layer can be scaled independently.  
+- **Reliability:** Failure in one layer does not necessarily take down the entire system.  
+- **Maintainability:** Updates or maintenance can be performed on one layer without impacting others.
+
+---
+
+# Summary
+
+This scaled-up architecture:  
+- Splits **web, application, and database layers** into separate servers.  
+- Adds **load balancer clustering** for redundancy.  
+- Supports **horizontal scaling** and improved performance.  
+- Reduces **single points of failure (SPOF)** in key areas.  
+- Provides better **maintainability and reliability** than single-server or simple distributed setups.
